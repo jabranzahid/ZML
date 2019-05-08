@@ -104,9 +104,6 @@ def get_test_data(norm = False, high_mass = True):
 def define_cnn_model():
 
     model = Sequential()
-    #model.add(Dense(128, input_shape=(n_flux, 1), activation="relu"))
-    #model.add(Dense(64, activation="relu"))
-    #model.add(Dense(32, activation="relu"))
 
     model.add(Conv1D(8, 10, input_shape=(2482, 1), activation="relu"))
     #model.add(Conv1D(16, 1, activation="relu"))

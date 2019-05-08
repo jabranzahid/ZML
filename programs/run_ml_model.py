@@ -2,7 +2,8 @@
 %run /Users/jabran/ml/metallicity/programs/ml_model_fsps_spectra.py
 
 #Read in training and test data
-features, labels = get_training_data(norm = True)
+SNR = 0
+features, labels = get_training_data(norm = True, SNR = SNR)
 test_data, mass = get_test_data(norm= True)
 
 #Here is the training step
@@ -12,7 +13,7 @@ EPOCHS = 100
 VALIDATION_SPLIT = 0.2
 model.compile(loss='mean_squared_error', optimizer='adam')
 model.fit(features, labels, batch_size = BATCH_SIZE, epochs = EPOCHS,
-              validation_split=VALIDATION_SPLIT, verbose=1)
+          validation_split=VALIDATION_SPLIT, verbose=1)
 
 #Save model
 MODEL_FILE  = '/Users/jabran/ml/metallicity/data/CNN_model.h5'
@@ -26,6 +27,7 @@ ppp = model.predict(test_data)
 file ='/Users/jabran/ml/metallicity/data/MZR_SSB_fit_Zahid2017.txt'
 mz = pd.read_csv(file)
 
+test_labels = np.stack(mz['Z'], mz['Age'])
 
 #Plot predicted results along with 2017 SSB MZR
 plot.plot(mass, np.log10(ppp[:,0]), label='ML')
