@@ -21,7 +21,7 @@ DATA_FILE_PATH ='/Users/jabran/ml/metallicity/data/'
 def get_training_data(norm = False, SNR = 0):
 #read in training data
 #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
-# and make_evol_fsps_model_str.pro. I fiddled with the programs, super klugey
+# and make_evol_fsps_model_str.pro. I fiddled with the programs,
 #one set is normalized the other is not using /no_norm keyword
 
     if norm == False:
@@ -105,9 +105,9 @@ def define_cnn_model():
 
     model = Sequential()
 
-    model.add(Conv1D(8, 10, input_shape=(2482, 1), activation="relu"))
+    model.add(Conv1D(8, 5, input_shape=(2482, 1), activation="relu"))
     #model.add(Conv1D(16, 1, activation="relu"))
-    model.add(Conv1D(16, 10, activation="relu"))
+    model.add(Conv1D(16, 5, activation="relu"))
     #model.add(BatchNormalization())
     #model.add(MaxPooling1D(2))
     #model.add(Conv1D(128, 30, activation="relu"))
@@ -118,6 +118,7 @@ def define_cnn_model():
     #model.add(Dropout(0.5))
     model.add(Dense(128, activation="relu"))
     model.add(Dense(2, activation="linear"))
+    model.compile(loss='mean_squared_error', optimizer='adam')
     model.summary()
 
 
