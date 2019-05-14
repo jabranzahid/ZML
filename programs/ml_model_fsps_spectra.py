@@ -68,12 +68,21 @@ def get_training_data(norm = False, SNR = 0):
 
 
 
-def get_test_data(norm = False, high_mass = True):
+def get_test_data(norm = False, high_mass = True, sfr_sort = False):
 
-    if norm == False:
-        FILE = "sdss_stack_data_no_norm.fits"
+
+    if sfr_sort:
+        if norm:
+            FILE = "sdss_sort_stack_data_norm.fits"
+        else:
+            FILE = "sdss_sort_stack_data_no_norm.fits"
     else:
-        FILE = "sdss_stack_data_norm.fits"
+        if norm:
+            FILE = "sdss_stack_data_norm.fits"
+        else:
+            FILE = "sdss_stack_data_no_norm.fits"
+
+
 
     STACK_FILE = DATA_FILE_PATH + FILE
 
@@ -86,13 +95,22 @@ def get_test_data(norm = False, high_mass = True):
     MASK_FILE = "/Users/jabran/ml/metallicity/data/emission_line_mask.txt"
     mask = np.loadtxt(MASK_FILE)
     index = np.where(mask == 0)
-    flux_test_mask = (flux_test[:,index].reshape(34, 2482))
-    flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
+
+    if sfr_sort:
+        flux_test_mask = (flux_test[:,index].reshape(170, 2482))
+        flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
+    else:
+        flux_test_mask = (flux_test[:,index].reshape(34, 2482))
+        flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
 
 
-    if high_mass == True:
-        flux_test_mask = flux_test_mask[9:,:,:]
-        mass = mass[9:]
+    if high_mass:
+        if sfr_sort:
+            ind = 45
+        else:
+            ind = 9
+        flux_test_mask = flux_test_mask[ind:,:,:]
+        mass = mass[ind:]
 
 
     return flux_test_mask, mass
@@ -105,17 +123,14 @@ def define_cnn_model():
 
     model = Sequential()
 
-    model.add(Conv1D(8, 5, input_shape=(2482, 1), activation="relu"))
-    #model.add(Conv1D(16, 1, activation="relu"))
-    model.add(Conv1D(16, 5, activation="relu"))
-    #model.add(BatchNormalization())
-    #model.add(MaxPooling1D(2))
-    #model.add(Conv1D(128, 30, activation="relu"))
-    #model.add(Conv1D(64, 15, activation="relu"))
-    #model.add(MaxPooling1D(3))
+    #Batch normaliztion produces terrible results. Do not use!
+
+    model.add(Conv1D(16, 2482, input_shape=(2482, 1), activation="relu"))
+#    model.add(Conv1D(4, 5, input_shape=(2482, 1), activation="relu"))
+#    model.add(Conv1D(8, 5, activation="relu"))
     model.add(Flatten())
     model.add(Dense(256, activation="relu"))
-    #model.add(Dropout(0.5))
+    model.add(Dropout(0,1))
     model.add(Dense(128, activation="relu"))
     model.add(Dense(2, activation="linear"))
     model.compile(loss='mean_squared_error', optimizer='adam')
