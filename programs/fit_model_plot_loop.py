@@ -34,9 +34,10 @@ def fit_model_plot_loop(model, data, **kwargs):
 
     BATCH_SIZE = 32
     VALIDATION_SPLIT = 0.05
+    n_loops = 50
 
     #This shows a movie of the convergence plotting the test set
-    for i in range(300):
+    for i in range(n_loops):
         model.fit(features, labels, batch_size = BATCH_SIZE, epochs = 1,
               validation_split=VALIDATION_SPLIT, verbose=1)
         ppp = model.predict(test_data)
