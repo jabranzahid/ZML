@@ -44,6 +44,7 @@ def fit_model_plot_loop(model, data, **kwargs):
         plot.ion()
         plot.plot(mass, (ppp[:,0]), label='ML')
         plot.plot(mz['mass'], mz['Z'], label='SSB')
+        plot.legend()
         plot.draw()
         mypause(0.01)
         print(i)
