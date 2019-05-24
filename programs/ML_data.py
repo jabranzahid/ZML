@@ -7,7 +7,7 @@ DATA_FILE_PATH = '/Users/jabran/ml/metallicity/data/'
 
 class ML_data:
 
-    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0):
+    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0, mask_lines = True):
         self.data_file_path = DATA_FILE_PATH
         self.n_chunks = n_chunks
         self.n_filters = n_filters
@@ -15,7 +15,12 @@ class ML_data:
         #this came from mask_emission_sdss_andrews.pro
         mask_file = "/Users/jabran/ml/metallicity/data/emission_line_mask.txt"
         mask = np.loadtxt(mask_file)
-        self.mask_index = np.where(mask == 0)
+        if mask_lines:
+            self.mask_index = np.where(mask == 0)
+        else:
+            self.mask_index = np.where(mask >= 0)
+        self.n_flux = len(self.mask_index[0])
+
 
 
     def split_data_into_chunks(self, input_arr):
@@ -30,7 +35,7 @@ class ML_data:
     def data_shape(self):
         shape1=[]
         shape=[]
-        eg_arr = np.array_split(np.empty(2482), self.n_chunks)
+        eg_arr = np.array_split(np.empty(self.n_flux), self.n_chunks)
         for x in eg_arr: shape1.append(x.shape)
         for i in range(self.n_filters): shape.extend(shape1)
 
@@ -38,40 +43,46 @@ class ML_data:
 
 
 
-    def get_training_data(self, SNR = 0, zmax = 0.3):
+    def get_training_data(self, SNR = 0, zmax = 0.3, only_z_zero = False):
     #read in training data
     #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
     # and make_evol_fsps_model_str.pro. I fiddled with the programs,
     #one set is normalized the other is not using /no_norm keyword
 
-
+        z_solar = 0.0142 # appropriate solar metallicity for these models
         FILE = "fsps_evol_models_norm.fits"
+
 
         FSPS_FILE = self.data_file_path + FILE
         hdul = fits.open(FSPS_FILE)
         data = hdul[1].data
+
+        if only_z_zero:
+            ind_z_zero = np.where(data['time_ind'] == 4)
+            data = data[ind_z_zero]
+
         flux = data.field(1)
+        n_spec = len(flux[:,0])
 
         #if SNR set, then add gaussian noise with a set SNR
         if self.snr != 0:
-            noise = np.random.normal(size=(1030, 3249))*(flux/self.snr)
+            noise = np.random.normal(size=flux.shape)*(flux/self.snr)
         else:
             noise = 0
 
         flux = flux + noise - 1
-        z_solar =0.0142
         lwz = np.log10(data['LWZ']/z_solar)
         lwa = np.log10(data['LWA'])
+        t_ind = data['time_ind']
 
         index = self.mask_index
 
-        flux_mask = (flux[:,index].reshape(1030, 2482))
+
+        flux_mask = (flux[:,index].reshape(n_spec, self.n_flux))
         index_zlo = np.where(lwz < zmax)
         nsel = len(index_zlo[0])
-        flux_mask = (flux_mask[index_zlo,:].reshape(nsel, 2482))
+        flux_mask = (flux_mask[index_zlo,:].reshape(nsel, self.n_flux))
         features = np.expand_dims(flux_mask, axis=2)
-        n_flux = len(flux_mask[0,:])
-        n_spec = len(flux_mask)
         labels = np.stack((lwz[index_zlo], lwa[index_zlo]), axis=1)
 
         #randomly reshuffle before feeding CNN
@@ -81,6 +92,8 @@ class ML_data:
         np.random.shuffle(labels)
 
         if self.n_chunks > 0: features = self.split_data_into_chunks(features)
+
+
 
         return features, labels
 
