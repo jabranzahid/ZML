@@ -27,10 +27,12 @@ class ML_data:
 
         output_arr=[]
 
-        output_arr1 = np.squeeze(input_arr)
+        output_arr1 = np.squeeze(input_arr, axis=2)
         output_arr1 = np.array_split(output_arr1, self.n_chunks, axis=1)
         for i in range(self.n_filters): output_arr.extend(output_arr1)
         return output_arr
+
+
 
     def data_shape(self):
         shape1=[]
@@ -43,7 +45,7 @@ class ML_data:
 
 
 
-    def get_training_data(self, SNR = 0, zmax = 0.3, only_z_zero = False):
+    def get_training_data(self, SNR = 0, zmax = 0.3, only_z_zero = False, training_data_fraction = 1):
     #read in training data
     #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
     # and make_evol_fsps_model_str.pro. I fiddled with the programs,
@@ -91,6 +93,11 @@ class ML_data:
         np.random.seed(4)
         np.random.shuffle(labels)
 
+        if training_data_fraction != 1:
+            ind_max = round(nsel*training_data_fraction)
+            features = features[0:ind_max-1,:,:]
+            labels = labels[0:ind_max-1,:]
+
         if self.n_chunks > 0: features = self.split_data_into_chunks(features)
 
 
@@ -119,10 +126,10 @@ class ML_data:
         index = self.mask_index
 
         if sfr_sort:
-            flux_test_mask = (flux_test[:,index].reshape(170, 2482))
+            flux_test_mask = (flux_test[:,index].reshape(170, self.n_flux))
             flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
         else:
-            flux_test_mask = (flux_test[:,index].reshape(34, 2482))
+            flux_test_mask = (flux_test[:,index].reshape(34, self.n_flux))
             flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
 
 
@@ -160,7 +167,7 @@ class ML_data:
 
         index = self.mask_index
 
-        flux_spec = (flux_spec[:,index].reshape(n_spec, 2482))
+        flux_spec = (flux_spec[:,index].reshape(n_spec, self.n_flux))
         flux_spec = np.expand_dims(flux_spec, axis=2)
 
         if self.n_chunks > 0 : flux_spec = self.split_data_into_chunks(flux_spec)

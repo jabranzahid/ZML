@@ -18,10 +18,10 @@ def mypause(interval):
         time.sleep(interval)
 
 
-def fit_model_plot_loop(model, data, n_loops = 50):
+def fit_model_plot_loop(model, data, n_loops = 50, BATCH_SIZE = 128, VALIDATION_SPLIT = 0.01, training_data_fraction = 1):
 
     test_data, mass = data.get_test_data()
-    features, labels = data.get_training_data()
+    features, labels = data.get_training_data(training_data_fraction = training_data_fraction)
     mz = data.get_zahid2017_mz()
 
 
@@ -32,8 +32,8 @@ def fit_model_plot_loop(model, data, n_loops = 50):
     plot.xlabel('Stellar Mass')
     plot.show(block=False)
 
-    BATCH_SIZE = 32
-    VALIDATION_SPLIT = 0.01
+
+
 
     #This shows a movie of the convergence plotting the test set
     for i in range(n_loops):
