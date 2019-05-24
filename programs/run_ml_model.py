@@ -6,9 +6,9 @@
 #exec(open("/Users/jabran/ml/metallicity/programs/ml_model_fsps_spectra.py").read())
 
 ###############Read in training and test data
-snr = 0 # no noise is added if SNR = 0
-n_chunks = 25 # set to 0 if using cnn
-n_filters = 5# set to 0 if using cnn
+snr = 100 # no noise is added if SNR = 0
+n_chunks = 100 # set to 0 if using cnn
+n_filters = 4# set to 0 if using cnn
 #this is instance of the data class
 #data actually read in the fitting step
 data = ML_data(n_chunks = n_chunks, n_filters = n_filters, snr=snr)
@@ -27,7 +27,7 @@ model = define_split_model(data)
 
 
 #########To fit model in for loop with plotting of test data
-model = fit_model_plot_loop(model, data)
+model = fit_model_plot_loop(model, data, n_loops = 200)
 
 
 ##########Return model prediction

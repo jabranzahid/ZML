@@ -7,12 +7,11 @@ DATA_FILE_PATH = '/Users/jabran/ml/metallicity/data/'
 
 class ML_data:
 
-    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0, norm = True):
+    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0):
         self.data_file_path = DATA_FILE_PATH
         self.n_chunks = n_chunks
         self.n_filters = n_filters
         self.snr = snr
-        self.norm = norm
         #this came from mask_emission_sdss_andrews.pro
         mask_file = "/Users/jabran/ml/metallicity/data/emission_line_mask.txt"
         mask = np.loadtxt(mask_file)
@@ -39,16 +38,14 @@ class ML_data:
 
 
 
-    def get_training_data(self, SNR = 0, zmax = 0.5):
+    def get_training_data(self, SNR = 0, zmax = 0.3):
     #read in training data
     #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
     # and make_evol_fsps_model_str.pro. I fiddled with the programs,
     #one set is normalized the other is not using /no_norm keyword
 
-        if self.norm == False:
-            FILE = "fsps_evol_models_no_norm.fits"
-        else:
-            FILE = "fsps_evol_models_norm.fits"
+
+        FILE = "fsps_evol_models_norm.fits"
 
         FSPS_FILE = self.data_file_path + FILE
         hdul = fits.open(FSPS_FILE)
@@ -94,16 +91,10 @@ class ML_data:
 
 
         if sfr_sort:
-            if self.norm:
-                FILE = "sdss_sort_stack_data_norm.fits"
-            else:
-                FILE = "sdss_sort_stack_data_no_norm.fits"
-        else:
-            if self.norm:
-                FILE = "sdss_stack_data_norm.fits"
-            else:
-                FILE = "sdss_stack_data_no_norm.fits"
+            FILE = "sdss_sort_stack_data_norm.fits"
 
+        else:
+            FILE = "sdss_stack_data_norm.fits"
 
         STACK_FILE = self.data_file_path + FILE
 
