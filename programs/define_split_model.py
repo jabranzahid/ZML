@@ -12,7 +12,7 @@ from keras import backend as K
 
 
 #Here is the model initialization
-def define_split_model(split):
+def define_split_model(split, l1 = 0, l2 = 0):
 
     activation = 'relu'
     K.clear_session()
@@ -27,17 +27,23 @@ def define_split_model(split):
             shape = (split.data_shape())[j]
             input = Input(shape=shape, name='input_' + name)
             inputs.append(input)
-            output = Dense(1, kernel_regularizer=regularizers.l2(0.1), bias_regularizer=regularizers.l2(0.1),
+            output = Dense(8, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+                           bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                            activation = activation, name='dense_' + name)(input)
             outputs.append(output)
 
     first_layer = Model(inputs=inputs, outputs=outputs)
     combined = concatenate(first_layer.outputs)
-    dropout1 = Dropout(0.1)(combined)
-    final_layers = Dense(40, activation = activation, name="Final_hidden_layer1")(dropout1)
-    final_layers = Dropout(0.1)(final_layers)
-    final_layers = Dense(10, activation = activation, name="Final_hidden_layer2")(final_layers)
-    #final_layers = Dropout(0.2)(final_layers)
+    #dropout1 = Dropout(0.0)(combined)
+    final_layers = Dense(40, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+                         bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+                         activation = activation, name="Final_hidden_layer1")(combined)
+    #final_layers = Dropout(0.3)(final_layers)
+    final_layers = Dense(10, activation = activation,
+                         kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+                         bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+                         name="Final_hidden_layer2")(final_layers)
+    #final_layers = Dropout(0.3)(final_layers)
     final_layers = Dense(2, activation = 'linear', name="Output_layer")(final_layers)
 
     model = Model(inputs = inputs, outputs = final_layers)

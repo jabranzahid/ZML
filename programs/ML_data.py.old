@@ -5,62 +5,35 @@ import pandas as pd
 
 DATA_FILE_PATH = '/Users/jabran/ml/metallicity/data/'
 
-def add_noise_to_training_data(arr_in, snr):
-    np.random.seed(np.random.randint(100000))
-    noise = np.random.normal(size=np.shape(arr_in))/snr
-    arr_out = arr_in + noise
-    return arr_out
-
-
-def split_data_into_chunks(input_arr, n_chunks, n_filters):
-
-    output_arr=[]
-
-    output_arr1 = np.squeeze(input_arr, axis=2)
-    output_arr1 = np.array_split(output_arr1, n_chunks, axis=1)
-    for i in range(n_filters): output_arr.extend(output_arr1)
-    return output_arr
-
-
-def get_instance_training_data(ML_obj):
-
-    labels = ML_obj.raw_labels
-    #if SNR set, then add gaussian noise with a set SNR
-    if ML_obj.snr != 0:
-        flux_mask = add_noise_to_training_data(ML_obj.raw_features, ML_obj.snr)
-    else:
-        flux_mask = ML_obj.raw_features
-
-    features = np.expand_dims(flux_mask, axis=2)
-
-    if ML_obj.training_data_fraction != 1:
-        ind_max = round(ML_obj.n_spec*ML_obj.training_data_fraction)
-        features = features[0:ind_max-1,:,:]
-        labels = labels[0:ind_max-1,:]
-
-    if ML_obj.n_chunks > 1 or ML_obj.n_filters > 1:
-        features = split_data_into_chunks(features, ML_obj.n_chunks, ML_obj.n_filters)
-
-    return features, np.asarray(labels)
 
 
 class ML_data:
 
-    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0, mask_lines = True, training_data_fraction = 1):
+    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0., mask_lines = True):
         self.data_file_path = DATA_FILE_PATH
-        self.training_data_fraction = training_data_fraction
         self.n_chunks = n_chunks
         self.n_filters = n_filters
         self.snr = snr
         #this came from mask_emission_sdss_andrews.pro
-        mask_file = DATA_FILE_PATH + "emission_line_mask.txt"
+        mask_file = "/Users/jabran/ml/metallicity/data/emission_line_mask.txt"
         mask = np.loadtxt(mask_file)
         if mask_lines:
-            self.mask_index = (np.where(mask == 0))[0]
+            self.mask_index = np.where(mask == 0)
         else:
-            self.mask_index = (np.where(mask >= 0))[0]
-        self.n_flux = len(self.mask_index)
+            self.mask_index = np.where(mask >= 0)
+        self.n_flux = len(self.mask_index[0])
         self.read_training_data()
+
+
+
+    def split_data_into_chunks(self, input_arr):
+
+        output_arr=[]
+
+        output_arr1 = np.squeeze(input_arr, axis=2)
+        output_arr1 = np.array_split(output_arr1, self.n_chunks, axis=1)
+        for i in range(self.n_filters): output_arr.extend(output_arr1)
+        return output_arr
 
 
 
@@ -74,12 +47,24 @@ class ML_data:
         return shape
 
 
+    def get_wave(self):
 
-    def read_training_data(self, zmax = 0.3, only_z_zero = False):
-        #read in training data
-        #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
-        #and make_evol_fsps_model_str.pro. I fiddled with the programs,
-        #one set is normalized the other is not using /no_norm keyword
+        wave = np.arange(3249) + 4051
+        return wave[self.mask_index]
+
+
+    def add_noise_to_training_data(self):
+
+        fff = self.raw_flux + np.random.normal(size=self.raw_flux.shape)/self.snr
+        return fff
+
+
+
+    def read_training_data(self, zmax = 0.3, only_z_zero = True):
+    #read in training data
+    #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
+    # and make_evol_fsps_model_str.pro. I fiddled with the programs,
+    #one set is normalized the other is not using /no_norm keyword
 
         z_solar = 0.0142 # appropriate solar metallicity for these models
         FILE = "fsps_evol_models_norm.fits"
@@ -94,30 +79,49 @@ class ML_data:
             data = data[ind_z_zero]
 
         flux = data.field(1) - 1
+        n_spec = len(flux[:,0])
+
         lwz = np.log10(data['LWZ']/z_solar)
         lwa = np.log10(data['LWA'])
-        labels = np.stack((lwz, lwa), axis=1)
-
-        index_zlo = (np.where(lwz < zmax))[0]
-        flux = flux[index_zlo, :]
-        labels = labels[index_zlo,:]
-
-        #randomly reshuffle before feeding CNN
-        np.random.seed(4)
-        np.random.shuffle(flux)
-        np.random.seed(4)
-        np.random.shuffle(labels)
+        t_ind = data['time_ind']
 
         index = self.mask_index
 
-        self.raw_features = tuple(flux[:,index])
-        self.raw_labels = tuple(labels)
-        self.n_spec = len(flux[:,0])
+        flux_mask = (flux[:,index].reshape(n_spec, self.n_flux))
+        index_zlo = np.where(lwz < zmax)
+        nsel = len(index_zlo[0])
+        flux_mask = (flux_mask[index_zlo,:].reshape(nsel, self.n_flux))
+        labels = np.stack((lwz[index_zlo], lwa[index_zlo]), axis=1)
+
+        self.raw_flux = flux_mask
+        self.labels = labels
 
 
-    def get_training_data(self):
-        features, labels = get_instance_training_data(self)
+    def get_training_data(self, training_data_fraction = 1.):
+
+        if self.snr != 0: flux = self.add_noise_to_training_data()
+        else: flux = self.raw_flux
+        labels = self.labels
+
+        features = np.expand_dims(flux, axis=2)
+
+        #randomly reshuffle before feeding CNN
+        np.random.seed(4)
+        np.random.shuffle(features)
+        np.random.seed(4)
+        np.random.shuffle(labels)
+
+        if training_data_fraction != 1:
+            ind_max = round(nsel*training_data_fraction)
+            features = features[0:ind_max-1,:,:]
+            labels = labels[0:ind_max-1,:]
+
+        if self.n_chunks > 0: features = self.split_data_into_chunks(features)
+
         return features, labels
+
+
+
 
     def get_test_data(self, high_mass = True, sfr_sort = False):
 
@@ -138,9 +142,12 @@ class ML_data:
         index = self.mask_index
 
         if sfr_sort:
-            flux_test_mask = np.expand_dims(flux_test[:,index], axis=2)
+            flux_test_mask = (flux_test[:,index].reshape(170, self.n_flux))
+            flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
         else:
-            flux_test_mask = np.expand_dims(flux_test[:,index], axis=2)
+            flux_test_mask = (flux_test[:,index].reshape(34, self.n_flux))
+            flux_test_mask = np.expand_dims(flux_test_mask, axis=2)
+
 
         if high_mass:
             if sfr_sort:
@@ -150,11 +157,12 @@ class ML_data:
             flux_test_mask = flux_test_mask[ind:,:,:]
             mass = mass[ind:]
 
-        if self.n_chunks > 1 or self.n_filters > 1:
-            flux_test_mask = split_data_into_chunks(flux_test_mask, self.n_chunks, self.n_filters)
+        if self.n_chunks > 0 : flux_test_mask = self.split_data_into_chunks(flux_test_mask)
 
 
         return flux_test_mask, mass
+
+
 
 
 
@@ -178,8 +186,7 @@ class ML_data:
         flux_spec = (flux_spec[:,index].reshape(n_spec, self.n_flux))
         flux_spec = np.expand_dims(flux_spec, axis=2)
 
-        if self.n_chunks > 1 or self.n_filters > 1:
-            flux_spec = split_data_into_chunks(flux_spec, self.n_chunks, self.n_filters)
+        if self.n_chunks > 0 : flux_spec = self.split_data_into_chunks(flux_spec)
 
         return flux_spec, sdss
 
@@ -195,3 +202,7 @@ class ML_data:
         mz = pd.read_csv(mzfile)
 
         return mz
+
+
+
+

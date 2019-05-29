@@ -1,4 +1,3 @@
-#Compile module
 %run ML_data.py
 %run define_cnn_model.py
 %run define_split_model.py
@@ -7,16 +6,21 @@
 
 ###############Read in training and test data
 snr = 10 # no noise is added if SNR = 0
-n_chunks = 25 # set to 0 if using cnn
-n_filters = 10# set to 0 if using cnn
+n_chunks = 100 # set to 0 if using cnn
+n_filters = 1# set to 0 if using cnn
 #this is instance of the data class
 #data actually read in the fitting step
 data = ML_data(n_chunks = n_chunks, n_filters = n_filters, snr=snr)
 
+#data_demo = ML_data(n_chunks = 1, n_filters = 0, snr=0)
+#features, labels = data_demo.get_training_data()
+#spec, mass = data_demo.get_test_data()
 
 #########Define which model to use
 #model = define_cnn_model()
-model = define_split_model(data)
+#model = define_split_model(data, l1 = 0, l2 = 0)
+model = define_split_model(data, l1 = 5e-5, l2 = 5e-5)
+
 
 #########To fit model in single pass
 #BATCH_SIZE = 32
@@ -27,12 +31,13 @@ model = define_split_model(data)
 
 
 #########To fit model in for loop with plotting of test data
-model = fit_model_plot_loop(model, data, n_loops = 50)
+model = fit_model_plot_loop(model, data, n_loops = 200)
 
 
 ##########Return model prediction for individual spectra
 spec, sdss = data.get_individual_sdss_spectra()
 ppp = model.predict(spec)
+
 ############plot median MZ relation from individual spectra
 sind = np.argsort(sdss['mass'])
 ppp = ppp[sind,:]

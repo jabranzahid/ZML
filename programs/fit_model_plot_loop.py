@@ -1,4 +1,5 @@
 from ML_data import ML_data
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plot
 matplotlib.use("Qt5agg") # or "Qt5agg" depending on you version of Qt
@@ -18,18 +19,16 @@ def mypause(interval):
         time.sleep(interval)
 
 
-def fit_model_plot_loop(model, data, n_loops = 50, BATCH_SIZE = 128, VALIDATION_SPLIT = 0.01, training_data_fraction = 1):
+def fit_model_plot_loop(model, data, n_loops = 50, BATCH_SIZE = 128, VALIDATION_SPLIT = 0.05, training_data_fraction = 1, snr = 0):
 
     test_data, mass = data.get_test_data()
-    features, labels = data.get_training_data(training_data_fraction = training_data_fraction)
+
     mz = data.get_zahid2017_mz()
 
 
     plot.ion()
     # set up the figure
     fig = plot.figure()
-    plot.ylabel('[Z/Z_solar]')
-    plot.xlabel('Stellar Mass')
     plot.show(block=False)
 
 
@@ -37,13 +36,16 @@ def fit_model_plot_loop(model, data, n_loops = 50, BATCH_SIZE = 128, VALIDATION_
 
     #This shows a movie of the convergence plotting the test set
     for i in range(n_loops):
+        features, labels = data.get_training_data()
         model.fit(features, labels, batch_size = BATCH_SIZE, epochs = 1,
-              validation_split=VALIDATION_SPLIT, verbose=1)
+                   validation_split=VALIDATION_SPLIT, verbose=1)
         ppp = model.predict(test_data)
         plot.clf()
         plot.ion()
         plot.plot(mass, (ppp[:,0]), label='ML')
         plot.plot(mz['mass'], mz['Z'], label='SSB')
+        plot.ylabel('[Z/Z_solar]')
+        plot.xlabel('Stellar Mass')
         plot.legend()
         plot.draw()
         mypause(0.01)
