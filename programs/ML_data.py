@@ -1,9 +1,66 @@
 from astropy.io import fits
+from dust_extinction.parameter_averages import O94
 import numpy as np
 import pandas as pd
+from numpy.polynomial.polynomial import polyval, polyfit
+import matplotlib.pyplot as plot
 
 
 DATA_FILE_PATH = '/Users/jabran/ml/metallicity/data/'
+
+def combine_ml_data(obj_list):
+    nobj = len(obj_list)
+    if nobj == 1:
+        features, labels = obj_list[0].get_training_data()
+    if nobj == 2:
+        f0, l0 = obj_list[0].get_training_data()
+        f1, l1 = obj_list[1].get_training_data()
+        features = []
+        labels = np.row_stack((l0,l1))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i])))
+    if nobj == 3:
+        f0, l0 = obj_list[0].get_training_data()
+        f1, l1 = obj_list[1].get_training_data()
+        f2, l2 = obj_list[2].get_training_data()
+        features = []
+        labels = np.row_stack((l0,l1, l2))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i])))
+    if nobj == 4:
+        f0, l0 = obj_list[0].get_training_data()
+        f1, l1 = obj_list[1].get_training_data()
+        f2, l2 = obj_list[2].get_training_data()
+        f3, l3 = obj_list[3].get_training_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i])))
+    if nobj == 5:
+        f0, l0 = obj_list[0].get_training_data()
+        f1, l1 = obj_list[1].get_training_data()
+        f2, l2 = obj_list[2].get_training_data()
+        f3, l3 = obj_list[3].get_training_data()
+        f4, l4 = obj_list[4].get_training_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3, l4))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i])))
+    if nobj == 6:
+        f0, l0 = obj_list[0].get_training_data()
+        f1, l1 = obj_list[1].get_training_data()
+        f2, l2 = obj_list[2].get_training_data()
+        f3, l3 = obj_list[3].get_training_data()
+        f4, l4 = obj_list[4].get_training_data()
+        f5, l5 = obj_list[5].get_training_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3, l4, l5))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i], f5[i])))
+
+
+    index = np.arange(len(features[0][:,0]))
+    np.random.shuffle(index)
+    labels = labels[index, :]
+    for i in range(len(features)): features[i] = features[i][index,:]
+
+    return features, labels
+
 
 def add_noise_to_training_data(arr_in, snr):
     np.random.seed(np.random.randint(100000))
@@ -38,20 +95,31 @@ def get_instance_training_data(ML_obj):
         features = features[0:ind_max-1,:,:]
         labels = labels[0:ind_max-1,:]
 
-    if ML_obj.n_chunks > 1 or ML_obj.n_filters > 1:
+    if ML_obj.n_chunks > 0 or ML_obj.n_filters > 1:
         features = split_data_into_chunks(features, ML_obj.n_chunks, ML_obj.n_filters)
 
     return features, np.asarray(labels)
 
 
+
+
 class ML_data:
 
-    def __init__(self, n_chunks = 1, n_filters = 1, snr = 0, mask_lines = True, training_data_fraction = 1):
+    def __init__(
+        self, n_chunks = 1, snr = 0, mask_lines = True,
+        training_data_fraction = 1, evol_model = True,
+        add_dust_extinction = False, generate_random = False,
+        nrandom_templates = 20000
+    ):
+
+        self.z_solar = 0.0142 # appropriate solar metallicity for these models
         self.data_file_path = DATA_FILE_PATH
         self.training_data_fraction = training_data_fraction
         self.n_chunks = n_chunks
-        self.n_filters = n_filters
+        self.n_filters = 1 #this keyword is defunct, add neurons to first layer
         self.snr = snr
+        self.add_dust_extinction = add_dust_extinction
+        self.nrandom_templates = nrandom_templates
         #this came from mask_emission_sdss_andrews.pro
         mask_file = DATA_FILE_PATH + "emission_line_mask.txt"
         mask = np.loadtxt(mask_file)
@@ -60,9 +128,17 @@ class ML_data:
         else:
             self.mask_index = (np.where(mask >= 0))[0]
         self.n_flux = len(self.mask_index)
-        self.read_training_data()
+        if generate_random:
+            self.n_labels = 10
+            self.generate_random_training_data()
+        else:
+            self.read_training_data(evol_model = evol_model)
 
-
+# never figured out how touse this properly
+#    @staticmethod
+#    def convert_labels(arr_in):
+#        arr_out = np.log10(10.**arr_in - 1)
+#        return arr_out
 
     def data_shape(self):
         shape1=[]
@@ -74,59 +150,180 @@ class ML_data:
         return shape
 
 
+    def extinguish_spectra(self, flux, labels, ebv_range = [0,0.4], nebv = 5, Rv=3.1):
 
-    def read_training_data(self, zmax = 0.3, only_z_zero = False):
+        wave_inv_micron = 1./(self.wave*1e-4)
+        ebv = np.linspace(ebv_range[0], ebv_range[1], nebv)
+        flux_out = np.zeros(shape=(self.n_spec*nebv, self.n_flux))
+        labels_out = np.zeros(shape=(self.n_spec*nebv, self.n_labels+1))
+
+        for i in range(nebv):
+            spec_ext = O94(Rv=Rv).extinguish(wave_inv_micron, Ebv=ebv[i])
+            spec_ext_mat = np.outer( np.ones((self.n_spec,)), spec_ext )
+            flux_out[i*self.n_spec:(i+1)*self.n_spec,:] = spec_ext_mat*flux
+            labels_out[i*self.n_spec:(i+1)*self.n_spec, 0:self.n_labels] = labels
+            labels_out[i*self.n_spec:(i+1)*self.n_spec,self.n_labels] = ebv[i]
+
+        ind_norm = (np.where((self.wave >= 4400) & (self.wave <= 4450)))[0]
+        med_norm = np.median(flux_out[:,ind_norm], axis=1)
+        flux_norm = np.outer( med_norm, np.ones((self.n_flux,)))
+        flux_out /= flux_norm
+
+        return flux_out, labels_out
+
+
+    def generate_random_training_data(self, zmax = 0.51):
+
+        FILE = "fsps_burst_templates_01.0.fits"
+        FSPS_FILE = self.data_file_path + FILE
+        ntemplates = self.nrandom_templates
+
+        hdul = fits.open(FSPS_FILE)
+        data = hdul[1].data
+        templates = np.squeeze(data['flux'], axis=0)
+        age = np.squeeze(data['age'])
+        wave = np.squeeze(data['wave'])
+        z = np.squeeze(data['z'])/self.z_solar
+        pfit_ind = np.squeeze(data['pfit_index'])
+
+        age_ind = np.concatenate((np.arange(3)*8+33, np.arange(50)+51))
+        z_ind = (np.where(  (np.log10(z) > -2.1)))[0]
+        age = age[age_ind]
+        z = z[z_ind]
+        templates = templates[:,age_ind,:]
+        templates = templates[z_ind,:,:]
+
+        nz = len(z)
+        nage = len(age)
+        lum = np.squeeze(data['lum'])
+
+        n_labels2 = int(self.n_labels/2)
+        nrandom = ntemplates*n_labels2
+
+        #unique values not necessary
+        np.random.seed(seed=None)
+        #ind_z = np.flip(np.sort( (np.random.randint(0, nz, nrandom)).reshape(ntemplates, n_labels2), axis=1), axis=1)
+        ind_z =  (np.random.randint(0, nz, nrandom)).reshape(ntemplates, n_labels2)
+
+        #for this random array, want unique values
+        np.random.seed(seed=None)
+        ind_age = np.sort( (np.argsort(np.random.rand(ntemplates, nage), axis=1))[:,0:n_labels2], axis=1)
+
+
+        lz = z[ind_z]
+        la = np.sqrt(age[ind_age])
+        labels = np.log10(np.column_stack((lz,la)))
+
+        spec_temp = np.moveaxis(templates[ind_z, ind_age, :], 2,0)
+        frac = [0.010190666, 0.052520990, 0.12342441, 0.29004723, 0.52381670]
+        frac_arr = (np.tile(frac, ntemplates)).reshape(ntemplates, 5)
+        temp_norm = np.sum(spec_temp*frac_arr, axis=2)
+
+        wave_ind = (np.where((wave >= 4400) & (wave <= 4450)))[0]
+        med_norm = np.median(temp_norm[wave_ind,:], axis=0)
+        temp_norm /= med_norm
+
+
+        ndeg = 20
+        wave_fit = np.arange(len(wave), dtype='float64')/(len(wave)-1) - 0.5
+        coeffs = polyfit(wave_fit[pfit_ind] , temp_norm[pfit_ind,:], ndeg)
+        pfit = (polyval(wave_fit,coeffs)).T
+
+        flux = (temp_norm/pfit)[50:-50]
+        flux = (flux[self.mask_index,:]).T
+
+        if self.add_dust_extinction:
+            flux, labels = self.extinguish_spectra(flux, labels)
+
+        self.raw_features = tuple(flux  - 1)
+        self.raw_labels = tuple(labels)
+
+
+
+    def read_training_data(self, zmax = 0.51, only_z_zero = False, evol_model = True, label_plus = True):
         #read in training data
         #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
         #and make_evol_fsps_model_str.pro. I fiddled with the programs,
         #one set is normalized the other is not using /no_norm keyword
 
-        z_solar = 0.0142 # appropriate solar metallicity for these models
-        FILE = "fsps_evol_models_norm.fits"
+        if self.add_dust_extinction:
+            if evol_model:
+                FILE = "fsps_evol_models_no_norm.fits"
+            else:
+                FILE = 'fsps_constant_z_sfr_models_no_norm.fits'
+        else:
+            if evol_model:
+                FILE = "fsps_evol_models_norm.fits"
+            else:
+                FILE = 'fsps_constant_z_sfr_models_norm.fits'
 
 
         FSPS_FILE = self.data_file_path + FILE
         hdul = fits.open(FSPS_FILE)
         data = hdul[1].data
 
-        if only_z_zero:
-            ind_z_zero = np.where(data['time_ind'] == 4)
+        if only_z_zero and evol_model:
+            ind_z_zero = np.where(data['time_ind'] == 7)
             data = data[ind_z_zero]
 
-        flux = data.field(1) - 1
-        lwz = np.log10(data['LWZ']/z_solar)
-        lwa = np.log10(data['LWA'])
-        labels = np.stack((lwz, lwa), axis=1)
+        flux = data.field(1)
+        wave = data['wave'][0,:]
 
-        index_zlo = (np.where(lwz < zmax))[0]
+        lwa = np.sqrt(data['LWA1'])
+        mwa  = np.sqrt(data['LOGMWA'] )
+        lwz = data['LWZ1']/self.z_solar
+        mwz  = data['LOGMWZ']/self.z_solar
+
+        if label_plus:
+            labels_lin = np.column_stack((mwz,mwa))
+        else:
+            labels_lin = np.stack((lwz, lwa), axis=1)
+
+        labels = np.log10(labels_lin )
+
+        index_zlo = (np.where(np.log10(lwz) < zmax))[0]
         flux = flux[index_zlo, :]
+        flux = flux[:, self.mask_index]
         labels = labels[index_zlo,:]
 
-        #randomly reshuffle before feeding CNN
+        self.wave = wave[self.mask_index]
+        self.n_spec = len(flux[:,0])
+        self.n_labels = len(labels[0,:])
+
+        if self.add_dust_extinction:
+            flux, labels = self.extinguish_spectra(flux, labels)
+
+        #randomly reshuffle due to how validation data is selected
         np.random.seed(4)
         np.random.shuffle(flux)
         np.random.seed(4)
         np.random.shuffle(labels)
 
-        index = self.mask_index
 
-        self.raw_features = tuple(flux[:,index])
+        self.raw_features = tuple(flux  - 1)
         self.raw_labels = tuple(labels)
-        self.n_spec = len(flux[:,0])
 
 
     def get_training_data(self):
         features, labels = get_instance_training_data(self)
         return features, labels
 
-    def get_test_data(self, high_mass = True, sfr_sort = False):
+    def get_test_data(self, high_mass = True, sfr_sort = False, shels_data = False):
 
 
-        if sfr_sort:
-            FILE = "sdss_sort_stack_data_norm.fits"
-
+        if self.add_dust_extinction:
+            if sfr_sort:
+                FILE = "sdss_sort_stack_data_no_norm.fits"
+            else:
+                FILE = "sdss_stack_data_no_norm.fits"
         else:
-            FILE = "sdss_stack_data_norm.fits"
+            if sfr_sort:
+                FILE = "sdss_sort_stack_data_norm.fits"
+            else:
+                FILE = "sdss_stack_data_norm.fits"
+
+        if shels_data:
+            FILE = "shels_stack_data_norm.fits"
 
         STACK_FILE = self.data_file_path + FILE
 
@@ -142,15 +339,16 @@ class ML_data:
         else:
             flux_test_mask = np.expand_dims(flux_test[:,index], axis=2)
 
-        if high_mass:
-            if sfr_sort:
-                ind = 45
-            else:
-                ind = 9
-            flux_test_mask = flux_test_mask[ind:,:,:]
-            mass = mass[ind:]
+        if not shels_data:
+            if high_mass:
+                if sfr_sort:
+                    ind = 45
+                else:
+                    ind = 9
+                flux_test_mask = flux_test_mask[ind:,:,:]
+                mass = mass[ind:]
 
-        if self.n_chunks > 1 or self.n_filters > 1:
+        if self.n_chunks > 0 or self.n_filters > 1:
             flux_test_mask = split_data_into_chunks(flux_test_mask, self.n_chunks, self.n_filters)
 
 

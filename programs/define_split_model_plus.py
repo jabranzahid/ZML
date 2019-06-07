@@ -12,9 +12,9 @@ from keras import backend as K
 
 
 #Here is the model initialization
-def define_split_model(split, l1 = 0, l2 = 0):
+def define_split_model_plus(split, l1 = 0, l2 = 0):
 
-    activation = 'relu'
+    activation = 'softplus'
     K.clear_session()
 
     outputs = []
@@ -35,23 +35,20 @@ def define_split_model(split, l1 = 0, l2 = 0):
     first_layer = Model(inputs=inputs, outputs=outputs)
     combined = concatenate(first_layer.outputs)
     #dropout1 = Dropout(0.0)(combined)
-    final_layers = Dense(40, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+    final_layers = Dense(256, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                          bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                          activation = activation, name="Final_hidden_layer1")(combined)
     #final_layers = Dropout(0.3)(final_layers)
-    final_layers = Dense(10, activation = activation,
+    final_layers = Dense(128, activation = activation,
                          kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                          bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                          name="Final_hidden_layer2")(final_layers)
     #final_layers = Dropout(0.3)(final_layers)
-    final_layers = Dense(2, activation = 'linear', name="Output_layer")(final_layers)
+    final_layers = Dense(10, activation = 'linear', name="Output_layer")(final_layers)
 
     model = Model(inputs = inputs, outputs = final_layers)
 
     model.compile(loss='mean_squared_error', optimizer='adam')
-# revisit this loss function
-#    model.compile(loss='logcosh', optimizer='adam')
-
     model.summary()
 
 
