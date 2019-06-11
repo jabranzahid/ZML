@@ -4,11 +4,55 @@ import numpy as np
 import pandas as pd
 from numpy.polynomial.polynomial import polyval, polyfit
 import matplotlib.pyplot as plot
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler as SCALER
 
 
 DATA_FILE_PATH = '/Users/jabran/ml/metallicity/data/'
 
-def combine_ml_data(obj_list):
+def initialize_pca():
+
+
+    #data0 = ML_data(generate_random = True, nrandom_templates = 3000)
+    #data1 = ML_data()
+    #data2 = ML_data(evol_model = False)
+    #data = [data0, data1, data2]
+
+    #fpca, lpca = combine_ml_data(data)
+    #f = fpca[0] + 1
+
+    f = ML_data().generate_single_burst_data() + 1
+    scaler = SCALER()
+    scaler.fit(f)
+    f = scaler.transform(f)
+
+    pca = PCA(0.99)
+    pca.fit(f)
+#!!!!!HERES WHERE  I WAS
+    evol, labels = ML_data().get_training_data()
+    evol = evol[0] + 1
+    evol_scaler = scaler.transform(evol)
+    evol_pca = pca.transform(evol_scaler)
+    evol_inverse = pca.inverse_transform(evol_pca)
+    diff = evol_scaler - evol_inverse
+
+    fff = np.append(f, diff, axis=0)
+    pca.fit(fff)
+
+
+    return pca, scaler
+
+
+def transform_data_pca(features, pca, scaler):
+
+    ff = features + 1
+    ff = scaler.transform(ff)
+    ff = pca.transform(ff)
+    features = [ff]
+
+    return features
+
+def combine_training_data(obj_list, pca = None, scaler = None):
     nobj = len(obj_list)
     if nobj == 1:
         features, labels = obj_list[0].get_training_data()
@@ -52,14 +96,100 @@ def combine_ml_data(obj_list):
         features = []
         labels = np.row_stack((l0, l1, l2, l3, l4, l5))
         for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i], f5[i])))
-
+    if nobj == 7:
+        f0, l0 = obj_list[0].get_training_data()
+        f1, l1 = obj_list[1].get_training_data()
+        f2, l2 = obj_list[2].get_training_data()
+        f3, l3 = obj_list[3].get_training_data()
+        f4, l4 = obj_list[4].get_training_data()
+        f5, l5 = obj_list[5].get_training_data()
+        f6, l6 = obj_list[6].get_training_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3, l4, l5, l6))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i], f5[i], f6[i])))
 
     index = np.arange(len(features[0][:,0]))
     np.random.shuffle(index)
     labels = labels[index, :]
     for i in range(len(features)): features[i] = features[i][index,:]
 
+    if (pca != None) & (scaler != None):
+        ff = features[0]
+        features = transform_data_pca(ff, pca, scaler)
+
     return features, labels
+
+
+
+
+def combine_validation_data(obj_list, pca = None, scaler = None):
+    nobj = len(obj_list)
+    if nobj == 1:
+        features, labels = obj_list[0].get_validation_data()
+    if nobj == 2:
+        f0, l0 = obj_list[0].get_validation_data()
+        f1, l1 = obj_list[1].get_validation_data()
+        features = []
+        labels = np.row_stack((l0,l1))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i])))
+    if nobj == 3:
+        f0, l0 = obj_list[0].get_validation_data()
+        f1, l1 = obj_list[1].get_validation_data()
+        f2, l2 = obj_list[2].get_validation_data()
+        features = []
+        labels = np.row_stack((l0,l1, l2))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i])))
+    if nobj == 4:
+        f0, l0 = obj_list[0].get_validation_data()
+        f1, l1 = obj_list[1].get_validation_data()
+        f2, l2 = obj_list[2].get_validation_data()
+        f3, l3 = obj_list[3].get_validation_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i])))
+    if nobj == 5:
+        f0, l0 = obj_list[0].get_validation_data()
+        f1, l1 = obj_list[1].get_validation_data()
+        f2, l2 = obj_list[2].get_validation_data()
+        f3, l3 = obj_list[3].get_validation_data()
+        f4, l4 = obj_list[4].get_validation_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3, l4))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i])))
+    if nobj == 6:
+        f0, l0 = obj_list[0].get_validation_data()
+        f1, l1 = obj_list[1].get_validation_data()
+        f2, l2 = obj_list[2].get_validation_data()
+        f3, l3 = obj_list[3].get_validation_data()
+        f4, l4 = obj_list[4].get_validation_data()
+        f5, l5 = obj_list[5].get_validation_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3, l4, l5))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i], f5[i])))
+    if nobj == 7:
+        f0, l0 = obj_list[0].get_validation_data()
+        f1, l1 = obj_list[1].get_validation_data()
+        f2, l2 = obj_list[2].get_validation_data()
+        f3, l3 = obj_list[3].get_validation_data()
+        f4, l4 = obj_list[4].get_validation_data()
+        f5, l5 = obj_list[5].get_validation_data()
+        f6, l6 = obj_list[6].get_validation_data()
+        features = []
+        labels = np.row_stack((l0, l1, l2, l3, l4, l5, l6))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i], f1[i], f2[i], f3[i], f4[i], f5[i], f6[i])))
+
+    index = np.arange(len(features[0][:,0]))
+    np.random.shuffle(index)
+    labels = labels[index, :]
+    for i in range(len(features)): features[i] = features[i][index,:]
+
+    if (pca != None) & (scaler != None):
+        ff = features[0]
+        features = transform_data_pca(ff, pca, scaler)
+
+    return features, labels
+
+
 
 
 def add_noise_to_training_data(arr_in, snr):
@@ -109,17 +239,18 @@ class ML_data:
         self, n_chunks = 1, snr = 0, mask_lines = True,
         training_data_fraction = 1, evol_model = True,
         add_dust_extinction = False, generate_random = False,
-        nrandom_templates = 20000
+        nrandom_templates = 20000, validation_split = 0.1,
     ):
 
         self.z_solar = 0.0142 # appropriate solar metallicity for these models
         self.data_file_path = DATA_FILE_PATH
-        self.training_data_fraction = training_data_fraction
+        self.training_data_fraction = 1 #this is defunct, clean up later
         self.n_chunks = n_chunks
         self.n_filters = 1 #this keyword is defunct, add neurons to first layer
         self.snr = snr
         self.add_dust_extinction = add_dust_extinction
         self.nrandom_templates = nrandom_templates
+        self.validation_split = validation_split
         #this came from mask_emission_sdss_andrews.pro
         mask_file = DATA_FILE_PATH + "emission_line_mask.txt"
         mask = np.loadtxt(mask_file)
@@ -134,11 +265,46 @@ class ML_data:
         else:
             self.read_training_data(evol_model = evol_model)
 
-# never figured out how touse this properly
-#    @staticmethod
-#    def convert_labels(arr_in):
-#        arr_out = np.log10(10.**arr_in - 1)
-#        return arr_out
+
+
+    def get_training_data(self):
+        features, labels = get_instance_training_data(self)
+        return features, labels
+
+
+
+    def get_validation_data(self):
+        labels_val = self.raw_labels_val
+        if self.snr != 0:
+            flux_mask_val = add_noise_to_training_data(self.raw_features_val, self.snr)
+        else:
+            flux_mask_val = self.raw_features_val
+
+        features_val = np.expand_dims(flux_mask_val, axis=2)
+
+        if self.n_chunks > 0 or self.n_filters > 1:
+            features_val = split_data_into_chunks(features_val, self.n_chunks, self.n_filters)
+
+        return features_val, labels_val
+
+
+
+
+    def split_training_validation(self, flux, labels):
+
+        val_split = 1 - self.validation_split
+        n_spec = len(flux)
+        ind_max = round(n_spec*val_split)
+
+        flux_train = flux[0:ind_max, :]
+        labels_train = labels[0:ind_max, :]
+        flux_val = flux[ind_max:, :]
+        labels_val = labels[ind_max:, :]
+
+        return flux_train, labels_train, flux_val, labels_val
+
+
+
 
     def data_shape(self):
         shape1=[]
@@ -172,7 +338,52 @@ class ML_data:
         return flux_out, labels_out
 
 
-    def generate_random_training_data(self, zmax = 0.51):
+    def generate_single_burst_data(self, zmax = 0.41):
+
+        FILE = "fsps_burst_templates_01.0.fits"
+        FSPS_FILE = self.data_file_path + FILE
+
+        hdul = fits.open(FSPS_FILE)
+        data = hdul[1].data
+        templates = np.squeeze(data['flux'], axis=0)
+        age = np.squeeze(data['age'])
+        wave = np.squeeze(data['wave'])
+        z = np.squeeze(data['z'])/self.z_solar
+        lum = np.squeeze(data['lum'])
+        pfit_ind = np.squeeze(data['pfit_index'])
+
+
+        #age_ind = np.concatenate((np.arange(3)*8+33, np.arange(50)+51))
+        z_ind = (np.where(  (np.log10(z) < zmax)))[0]
+        age_ind = np.arange(len(age))
+        z_ind = np.arange(len(z))
+        age = age[age_ind]
+        z = z[z_ind]
+        nz = len(z)
+        nage = len(age)
+
+        templates = templates[:,age_ind,:]
+        templates = templates[z_ind,:,:]
+        lum = lum[:,age_ind]
+        lum = lum[z_ind,:]
+
+
+        temp_norm = (np.moveaxis(templates, 2,0)/lum).reshape(3349, nz*nage)
+
+        ndeg = 20
+        wave_fit = np.arange(len(wave), dtype='float64')/(len(wave)-1) - 0.5
+        coeffs = polyfit(wave_fit[pfit_ind] , temp_norm[pfit_ind,:], ndeg)
+        pfit = (polyval(wave_fit,coeffs)).T
+
+        flux = (temp_norm/pfit)[50:-50]
+        flux = (flux[self.mask_index,:]).T - 1
+
+        return flux
+
+
+
+
+    def generate_random_training_data(self, zmax = 0.41):
 
         FILE = "fsps_burst_templates_01.0.fits"
         FSPS_FILE = self.data_file_path + FILE
@@ -211,7 +422,7 @@ class ML_data:
 
 
         lz = z[ind_z]
-        la = np.sqrt(age[ind_age])
+        la = age[ind_age]
         labels = np.log10(np.column_stack((lz,la)))
 
         spec_temp = np.moveaxis(templates[ind_z, ind_age, :], 2,0)
@@ -222,7 +433,6 @@ class ML_data:
         wave_ind = (np.where((wave >= 4400) & (wave <= 4450)))[0]
         med_norm = np.median(temp_norm[wave_ind,:], axis=0)
         temp_norm /= med_norm
-
 
         ndeg = 20
         wave_fit = np.arange(len(wave), dtype='float64')/(len(wave)-1) - 0.5
@@ -235,12 +445,24 @@ class ML_data:
         if self.add_dust_extinction:
             flux, labels = self.extinguish_spectra(flux, labels)
 
-        self.raw_features = tuple(flux  - 1)
-        self.raw_labels = tuple(labels)
+        if self.validation_split != 0:
+            flux_train, labels_train, flux_val, labels_val = self.split_training_validation(flux, labels)
+            flux_train -= 1
+            flux_val -= 1
+        else:
+            flux_train = flux
+            labels_train = labels
+            flux_val = [None]
+            labels_val = [None]
+
+        self.raw_features = tuple(flux_train)
+        self.raw_labels = tuple(labels_train)
+        self.raw_features_val = tuple(flux_val)
+        self.raw_labels_val = tuple(labels_val)
 
 
 
-    def read_training_data(self, zmax = 0.51, only_z_zero = False, evol_model = True, label_plus = True):
+    def read_training_data(self, zmax = 0.41, only_z_zero = False, evol_model = True, label_plus = True):
         #read in training data
         #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
         #and make_evol_fsps_model_str.pro. I fiddled with the programs,
@@ -269,8 +491,8 @@ class ML_data:
         flux = data.field(1)
         wave = data['wave'][0,:]
 
-        lwa = np.sqrt(data['LWA1'])
-        mwa  = np.sqrt(data['LOGMWA'] )
+        lwa = data['LWA1']
+        mwa  = data['LOGMWA']
         lwz = data['LWZ1']/self.z_solar
         mwz  = data['LOGMWZ']/self.z_solar
 
@@ -299,14 +521,22 @@ class ML_data:
         np.random.seed(4)
         np.random.shuffle(labels)
 
+        if self.validation_split != 0:
+            flux_train, labels_train, flux_val, labels_val = self.split_training_validation(flux, labels)
+            flux_train -= 1
+            flux_val -= 1
+        else:
+            flux_train = flux
+            labels_train = labels
+            flux_val = [None]
+            labels_val = [None]
 
-        self.raw_features = tuple(flux  - 1)
-        self.raw_labels = tuple(labels)
+        self.raw_features = tuple(flux_train)
+        self.raw_labels = tuple(labels_train)
+        self.raw_features_val = tuple(flux_val)
+        self.raw_labels_val = tuple(labels_val)
 
 
-    def get_training_data(self):
-        features, labels = get_instance_training_data(self)
-        return features, labels
 
     def get_test_data(self, high_mass = True, sfr_sort = False, shels_data = False):
 

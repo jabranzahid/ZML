@@ -14,7 +14,8 @@ from keras import backend as K
 #Here is the model initialization
 def define_split_model_plus(split, l1 = 0, l2 = 0):
 
-    activation = 'softplus'
+#    activation = 'softplus' #this performs second  best after sigmoid
+    activation = 'sigmoid'
     K.clear_session()
 
     outputs = []
