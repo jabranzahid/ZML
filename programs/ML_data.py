@@ -29,15 +29,15 @@ def initialize_pca():
     pca = PCA(0.99)
     pca.fit(f)
 #!!!!!HERES WHERE  I WAS
-    evol, labels = ML_data().get_training_data()
-    evol = evol[0] + 1
-    evol_scaler = scaler.transform(evol)
-    evol_pca = pca.transform(evol_scaler)
-    evol_inverse = pca.inverse_transform(evol_pca)
-    diff = evol_scaler - evol_inverse
+#    evol, labels = ML_data().get_training_data()
+#    evol = evol[0] + 1
+#    evol_scaler = scaler.transform(evol)
+#    evol_pca = pca.transform(evol_scaler)
+#    evol_inverse = pca.inverse_transform(evol_pca)
+#    diff = evol_scaler - evol_inverse
 
-    fff = np.append(f, diff, axis=0)
-    pca.fit(fff)
+#    fff = np.append(f, diff, axis=0)
+#    pca.fit(fff)
 
 
     return pca, scaler
@@ -55,7 +55,10 @@ def transform_data_pca(features, pca, scaler):
 def combine_training_data(obj_list, pca = None, scaler = None):
     nobj = len(obj_list)
     if nobj == 1:
-        features, labels = obj_list[0].get_training_data()
+        f0, l0 = obj_list[0].get_training_data()
+        features = []
+        labels = np.row_stack((l0))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i])))
     if nobj == 2:
         f0, l0 = obj_list[0].get_training_data()
         f1, l1 = obj_list[1].get_training_data()
@@ -125,7 +128,10 @@ def combine_training_data(obj_list, pca = None, scaler = None):
 def combine_validation_data(obj_list, pca = None, scaler = None):
     nobj = len(obj_list)
     if nobj == 1:
-        features, labels = obj_list[0].get_validation_data()
+        f0, l0 = obj_list[0].get_validation_data()
+        features = []
+        labels = np.row_stack((l0))
+        for i in range(len(f0)): features.append(np.row_stack((f0[i])))
     if nobj == 2:
         f0, l0 = obj_list[0].get_validation_data()
         f1, l1 = obj_list[1].get_validation_data()
@@ -398,6 +404,7 @@ class ML_data:
         pfit_ind = np.squeeze(data['pfit_index'])
 
         age_ind = np.concatenate((np.arange(3)*8+33, np.arange(50)+51))
+        #age_ind = np.arange(50)+51
         z_ind = (np.where(  (np.log10(z) > -2.1)))[0]
         age = age[age_ind]
         z = z[z_ind]
@@ -407,6 +414,7 @@ class ML_data:
         nz = len(z)
         nage = len(age)
         lum = np.squeeze(data['lum'])
+
 
         n_labels2 = int(self.n_labels/2)
         nrandom = ntemplates*n_labels2
@@ -420,14 +428,14 @@ class ML_data:
         np.random.seed(seed=None)
         ind_age = np.sort( (np.argsort(np.random.rand(ntemplates, nage), axis=1))[:,0:n_labels2], axis=1)
 
-
         lz = z[ind_z]
         la = age[ind_age]
         labels = np.log10(np.column_stack((lz,la)))
 
         spec_temp = np.moveaxis(templates[ind_z, ind_age, :], 2,0)
-        frac = [0.010190666, 0.052520990, 0.12342441, 0.29004723, 0.52381670]
-        frac_arr = (np.tile(frac, ntemplates)).reshape(ntemplates, 5)
+        #frac = [0.010190666, 0.052520990, 0.12342441, 0.29004723, 0.52381670]
+        #frac_arr = (np.tile(frac, ntemplates)).reshape(ntemplates, 5)
+        frac_arr = 1./lum[ind_z,ind_age]
         temp_norm = np.sum(spec_temp*frac_arr, axis=2)
 
         wave_ind = (np.where((wave >= 4400) & (wave <= 4450)))[0]
