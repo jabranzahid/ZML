@@ -436,6 +436,7 @@ class ML_data:
         #frac = [0.010190666, 0.052520990, 0.12342441, 0.29004723, 0.52381670]
         #frac_arr = (np.tile(frac, ntemplates)).reshape(ntemplates, 5)
         frac_arr = 1./lum[ind_z,ind_age]
+        frac_arr *= np.random.uniform(size = (ntemplates,n_labels2))/2+0.75
         temp_norm = np.sum(spec_temp*frac_arr, axis=2)
 
         wave_ind = (np.where((wave >= 4400) & (wave <= 4450)))[0]
