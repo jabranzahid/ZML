@@ -23,7 +23,7 @@ def mypause(interval):
 
 
 def fit_model_plot_loop(model, data, n_loops = 50,
-                        BATCH_SIZE = 128,
+                        BATCH_SIZE = 128, plot_ind_spec = True,
                         training_data_fraction = 1, pca = None , scaler = None,
     ):
 
@@ -34,14 +34,16 @@ def fit_model_plot_loop(model, data, n_loops = 50,
     test_data2, mass2 = data[0].get_test_data(shels_data = True)
 
     mz = data[0].get_zahid2017_mz()
-    spec, sdss = data[0].get_individual_sdss_spectra()
-    sind = np.argsort(sdss['mass'])
+    if plot_ind_spec:
+        spec, sdss = data[0].get_individual_sdss_spectra()
+        sind = np.argsort(sdss['mass'])
 
     if (pca != None) & (scaler != None):
-        spec =np.squeeze(spec)
-        inf_ind = np.where(spec == float('Inf'))
-        spec[inf_ind] = 0
-        spec = transform_data_pca(spec, pca, scaler)
+        if plot_ind_spec:
+            spec =np.squeeze(spec)
+            inf_ind = np.where(spec == float('Inf'))
+            spec[inf_ind] = 0
+            spec = transform_data_pca(spec, pca, scaler)
         test_data = transform_data_pca(test_data[0], pca, scaler)
         test_data2 = transform_data_pca(test_data2[0], pca, scaler)
 
@@ -74,31 +76,33 @@ def fit_model_plot_loop(model, data, n_loops = 50,
         plot.plot(mass, (ppp[:,0]), label='ML SDSS')
         #plot.plot(mass2, (ppp2[:,0]), label='ML SHELS')
         plot.plot(mz['mass'], mz['Z'], label='SSB SDSS')
+        plot.ylim(-0.8, 0.3)
         plot.ylabel('[Z/Z_solar]')
         plot.xlabel('Stellar Mass')
         plot.legend()
         plot.draw()
 
-        if i%25 == 0:
-            ppp = model.predict(spec)
-            ppp = ppp[sind,:]
-            zzz = ppp[:,0]
-            mmm = sdss['mass']
-            mmm = mmm[sind]
-            #good = np.where(zzz > -2 )
-            #zzz = zzz[good]
-            #mmm = mmm[good]
-            zsplit = np.array_split(zzz, 100)
-            msplit = np.array_split(mmm, 100)
-            zmed = []
-            mmed =[]
-            for j in np.arange(100):
-                zmed.append(np.nanmedian(zsplit[j]))
-                mmed.append(np.nanmedian(msplit[j]))
+        if plot_ind_spec:
+            if i%25 == 0:
+                ppp = model.predict(spec)
+                ppp = ppp[sind,:]
+                zzz = ppp[:,0]
+                mmm = sdss['mass']
+                mmm = mmm[sind]
+                #good = np.where(zzz > -2 )
+                #zzz = zzz[good]
+                #mmm = mmm[good]
+                zsplit = np.array_split(zzz, 100)
+                msplit = np.array_split(mmm, 100)
+                zmed = []
+                mmed =[]
+                for j in np.arange(100):
+                    zmed.append(np.nanmedian(zsplit[j]))
+                    mmed.append(np.nanmedian(msplit[j]))
 
-        plot.plot(mmed,zmed)
+            plot.plot(mmed,zmed)
 
-        mypause(0.01)
+        mypause(0.00001)
         print(i)
 
     return model, pout#, mout

@@ -9,11 +9,64 @@
 
 
 
+pca, scaler = initialize_pca()
+data1 = ML_data(snr=0)
+data2 = ML_data(snr=20)
+data3 = ML_data(snr=0, evol_model = False)
+data4 = ML_data(snr=20, evol_model = False)
+data5 = ML_data(snr=0, generate_random = True, nrandom_templates = 1000, n_random_avg = 3)
+data6 = ML_data(snr=20, generate_random = True, nrandom_templates = 1000, n_random_avg = 3)
+data = [data1, data2, data3, data4, data5, data6]
+model = define_pca_model(pca.n_components_, l1 = 1e-3, l2 = 1e-3)
+model, pout = fit_model_plot_loop(model, data, n_loops = 1001, pca = pca, scaler = scaler)
+
+
+pca, scaler = initialize_pca()
+data0 = ML_data(snr=0, generate_random = True, nrandom_templates = 300, n_random_avg = 3)
+data1 = ML_data(snr=25, generate_random = True, nrandom_templates = 300, n_random_avg = 3)
+model = define_pca_model(pca.n_components_, l1 = 0, l2 = 0)
+model, pout = fit_model_plot_loop(model, [data0, data1], n_loops = 10001, pca = pca, scaler = scaler, plot_ind_spec=False)
+
+
+
+#PCA applroach under heavy development
+pca, scaler = initialize_pca()
+data0 = ML_data(snr=0, generate_random = True, nrandom_templates = 5000)
+data1 = ML_data(snr=10, generate_random = True, nrandom_templates = 5000)
+data = [data0, data1]
+model = define_pca_model(pca.n_components_, l1 = 1e-3, l2 = 1e-3)
+model, pout = fit_model_plot_loop(model, data, n_loops = 1001, pca = pca, scaler = scaler, plot_ind_spec=False)
+
+
+
+pca, scaler = initialize_pca()
+data1 = ML_data(snr=0)
+data2 = ML_data(snr=10)
+data3 = ML_data(snr=0, evol_model = False)
+data4 = ML_data(snr=10, evol_model = False)
+data = [data1, data2, data3, data4]#, data5, data6]
+model = define_pca_model(pca.n_components_, l1 = 1e-3, l2 = 1e-3)
+model, pout = fit_model_plot_loop(model, data, n_loops = 1001, pca = pca, scaler = scaler)
+
+
+
+
+
+
+#This works reasonably well
+pca, scaler = initialize_pca()
+data1 = ML_data(snr=0)
+data2 = ML_data(snr=20)
+data3 = ML_data(snr=0, evol_model = False)
+data4 = ML_data(snr=20, evol_model = False)
+data = [data1, data2, data3, data4]#, data5, data6]
+model = define_pca_model(pca.n_components_, l1 = 1e-3, l2 = 1e-3)
+model, pout = fit_model_plot_loop(model, data, n_loops = 1001, pca = pca, scaler = scaler)
 
 
 #THIS SETUP WORKS REALLY WELL
 n_chunks = 25
-data0 = ML_data(n_chunks = n_chunks, snr=0, generate_random = True, nrandom_templates = 5000)
+#data0 = ML_data(n_chunks = n_chunks, snr=0, generate_random = True, nrandom_templates = 5000)
 data1 = ML_data(n_chunks = n_chunks, snr=0)
 data2 = ML_data(n_chunks = n_chunks, snr=10)
 #data3 = ML_data(n_chunks = n_chunks, snr=20)
@@ -21,25 +74,22 @@ data4 = ML_data(n_chunks = n_chunks, snr=0, evol_model = False)
 data5 = ML_data(n_chunks = n_chunks, snr=10, evol_model = False)
 #data6 = ML_data(n_chunks = n_chunks, snr=20, evol_model = False)
 #data = [data0, data1, data2, data3, data4, data5, data6]
-data = [data0, data1, data2, data4, data5]
+data = [data1, data2, data4, data5]
 model = define_split_model_plus(data[0], l1 = 1e-6, l2 = 1e-6)
-model, pout = fit_model_plot_loop(model, data, n_loops = 201)
+model, pout = fit_model_plot_loop(model, data, n_loops = 201, plot_ind_spec = False)
+
+
+#Only use constant SFR - Z models
+n_chunks = 25
+data1 = ML_data(n_chunks = n_chunks, snr=0, evol_model = False)
+data2 = ML_data(n_chunks = n_chunks, snr=20, evol_model = False)
+data = [data1, data2]
+model = define_split_model_plus(data[0], l1 = 1e-6, l2 = 1e-6)
+model, pout = fit_model_plot_loop(model, data, n_loops = 201, plot_ind_spec = False)
 
 
 
-#PCA applroach under heavy development
-pca, scaler = initialize_pca()
-data0 = ML_data(snr=0, generate_random = True, nrandom_templates = 5000)
-data1 = ML_data(snr=0)
-data2 = ML_data(snr=10)
-data3 = ML_data(snr=0, evol_model = False)
-data4 = ML_data(snr=10, evol_model = False)
-data5 = ML_data(snr=50)
-data6 = ML_data(snr=50, evol_model = False)
-data = [data0, data1, data2, data3, data4, data5, data6]
-#data = [data0, data1, data3, data5, data6]
-model = define_pca_model(pca.n_components_, l1 = 1e-4, l2 = 1e-4)
-model, pout = fit_model_plot_loop(model, data, n_loops = 1001, pca = pca, scaler = scaler)
+
 
 n_loops = 30
 for i in range(n_loops):

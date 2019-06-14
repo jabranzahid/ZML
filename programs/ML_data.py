@@ -5,6 +5,7 @@ import pandas as pd
 from numpy.polynomial.polynomial import polyval, polyfit
 import matplotlib.pyplot as plot
 from sklearn.decomposition import PCA
+from sklearn.decomposition import KernelPCA as kPCA
 from sklearn.preprocessing import StandardScaler as SCALER
 
 
@@ -21,14 +22,17 @@ def initialize_pca():
     #fpca, lpca = combine_ml_data(data)
     #f = fpca[0] + 1
 
-    f = ML_data().generate_single_burst_data() + 1
+    f, z, age = ML_data().generate_single_burst_data()
+    f += 1
     scaler = SCALER()
     scaler.fit(f)
     f = scaler.transform(f)
 
-    pca = PCA(0.99)
+    pca = PCA(n_components=8)
     pca.fit(f)
-#!!!!!HERES WHERE  I WAS
+
+
+#!!!!!This sequence did not significantly improve results
 #    evol, labels = ML_data().get_training_data()
 #    evol = evol[0] + 1
 #    evol_scaler = scaler.transform(evol)
@@ -245,7 +249,7 @@ class ML_data:
         self, n_chunks = 1, snr = 0, mask_lines = True,
         training_data_fraction = 1, evol_model = True,
         add_dust_extinction = False, generate_random = False,
-        nrandom_templates = 20000, validation_split = 0.1,
+        nrandom_templates = 20000, validation_split = 0.1, n_random_avg = 5,
     ):
 
         self.z_solar = 0.0142 # appropriate solar metallicity for these models
@@ -257,6 +261,7 @@ class ML_data:
         self.add_dust_extinction = add_dust_extinction
         self.nrandom_templates = nrandom_templates
         self.validation_split = validation_split
+        self.n_random_avg = n_random_avg
         #this came from mask_emission_sdss_andrews.pro
         mask_file = DATA_FILE_PATH + "emission_line_mask.txt"
         mask = np.loadtxt(mask_file)
@@ -359,7 +364,6 @@ class ML_data:
         pfit_ind = np.squeeze(data['pfit_index'])
 
 
-        #age_ind = np.concatenate((np.arange(3)*8+33, np.arange(50)+51))
         z_ind = (np.where(  (np.log10(z) < zmax)))[0]
         age_ind = np.arange(len(age))
         z_ind = np.arange(len(z))
@@ -384,7 +388,7 @@ class ML_data:
         flux = (temp_norm/pfit)[50:-50]
         flux = (flux[self.mask_index,:]).T - 1
 
-        return flux
+        return flux, age, z
 
 
 
@@ -394,61 +398,84 @@ class ML_data:
         FILE = "fsps_burst_templates_01.0.fits"
         FSPS_FILE = self.data_file_path + FILE
         ntemplates = self.nrandom_templates
+        n_avg = self.n_random_avg
 
         hdul = fits.open(FSPS_FILE)
         data = hdul[1].data
-        templates = np.squeeze(data['flux'], axis=0)
+        templates = np.moveaxis(np.squeeze(data['flux'], axis=0), 2, 0)
         age = np.squeeze(data['age'])
         wave = np.squeeze(data['wave'])
         z = np.squeeze(data['z'])/self.z_solar
         pfit_ind = np.squeeze(data['pfit_index'])
+        temp_lum = np.squeeze(data['lum'])
 
-        age_ind = np.concatenate((np.arange(3)*8+33, np.arange(50)+51))
+        dt = np.repeat(age*(10**0.05), len(z)).reshape(len(age), len(z)).T
+        norm_temp = templates*dt
+        temp_lum *= dt
+
+        #age_ind = np.concatenate((np.arange(3)*8+33, np.arange(53)+51))
         #age_ind = np.arange(50)+51
-        z_ind = (np.where(  (np.log10(z) > -2.1)))[0]
+        age_ind = np.concatenate((np.arange(5)*5+5,np.arange(72)+30))
+        z_ind = (np.where(  (np.log10(z) < zmax) & (np.log10(z) > -1.1)))[0]
         age = age[age_ind]
         z = z[z_ind]
-        templates = templates[:,age_ind,:]
-        templates = templates[z_ind,:,:]
+        norm_temp = norm_temp[:,:,age_ind]
+        norm_temp = norm_temp[:,z_ind,:]
+        temp_lum = temp_lum[:,age_ind]
+        temp_lum = temp_lum[z_ind,:]
 
         nz = len(z)
         nage = len(age)
-        lum = np.squeeze(data['lum'])
-
-
         n_labels2 = int(self.n_labels/2)
-        nrandom = ntemplates*n_labels2
+        nrandom = ntemplates*n_labels2*n_avg
 
-        #unique values not necessary
-        np.random.seed(seed=None)
-        #ind_z = np.flip(np.sort( (np.random.randint(0, nz, nrandom)).reshape(ntemplates, n_labels2), axis=1), axis=1)
-        ind_z =  (np.random.randint(0, nz, nrandom)).reshape(ntemplates, n_labels2)
+        #ind_z = np.flip(np.sort((np.random.randint(0, nz, nrandom)).reshape(ntemplates, n_labels2*n_avg), axis=1))
+        #ind_age = np.sort((np.random.randint(0, nage, nrandom)).reshape(ntemplates, n_labels2*n_avg), axis=1)
+        ind_z = []
+        ind_age = []
+        for i in range(ntemplates):
+            nz_min = np.random.randint(0, nz/3)
+            nz_max = np.random.randint(2*nz/3+1, nz)
+            ind_z1 = np.flip(np.sort(np.random.randint(nz_min, nz_max +1, n_labels2*n_avg)))
+            ind_z1 = np.asarray(np.split(ind_z1, n_labels2))
+            np.random.shuffle(ind_z1)
+            ind_z1 = ind_z1.reshape(n_labels2*n_avg)
+            ind_z.append(ind_z1)
+            nage_min = np.random.randint(0, nage/2)
+            nage_max = np.random.randint(2*nage/3+1, nage)
+            ind_age.append(np.sort(np.random.randint(nage_min, nage_max+1, n_labels2*n_avg)))
 
-        #for this random array, want unique values
-        np.random.seed(seed=None)
-        ind_age = np.sort( (np.argsort(np.random.rand(ntemplates, nage), axis=1))[:,0:n_labels2], axis=1)
+        ind_z = np.asarray(ind_z)
+        ind_age = np.asarray(ind_age)
 
-        lz = z[ind_z]
-        la = age[ind_age]
-        labels = np.log10(np.column_stack((lz,la)))
-
-        spec_temp = np.moveaxis(templates[ind_z, ind_age, :], 2,0)
-        #frac = [0.010190666, 0.052520990, 0.12342441, 0.29004723, 0.52381670]
-        #frac_arr = (np.tile(frac, ntemplates)).reshape(ntemplates, 5)
-        frac_arr = 1./lum[ind_z,ind_age]
-        frac_arr *= np.random.uniform(size = (ntemplates,n_labels2))/2+0.75
-        temp_norm = np.sum(spec_temp*frac_arr, axis=2)
+        la_rand = np.log10(age[ind_age])
+        lz_rand = np.log10(z[ind_z])
+        rand_temp = norm_temp[:, ind_z, ind_age]
+        rand_lum = temp_lum[ind_z, ind_age]
+        if n_avg > 1:
+            rand_lum2 = np.random.uniform(size = (ntemplates,n_labels2*n_avg))*0 + 1
+            rand_temp = np.sum(np.asarray(np.split(rand_temp*rand_lum2, n_labels2, axis=2)), axis=3)
+            rand_temp = np.moveaxis(rand_temp.T, 1,0)
+            lz_rand = np.sum(np.asarray(np.split(lz_rand*rand_lum*rand_lum2, n_labels2, axis=1)), axis=2)/np.sum(np.asarray(np.split(rand_lum*rand_lum2, n_labels2, axis=1)), axis=2)
+            lz = lz_rand.T
+            la_rand = np.sum(np.asarray(np.split(la_rand*rand_lum*rand_lum2, n_labels2, axis=1)), axis=2)/np.sum(np.asarray(np.split(rand_lum*rand_lum2, n_labels2, axis=1)), axis=2)
+            la = la_rand.T
+        else:
+            la = la_rand
+            lz = lz_rand
+        labels = np.column_stack((lz,la))
 
         wave_ind = (np.where((wave >= 4400) & (wave <= 4450)))[0]
-        med_norm = np.median(temp_norm[wave_ind,:], axis=0)
-        temp_norm /= med_norm
+        med_norm = np.median(rand_temp[wave_ind,:,:], axis=0)
+        rand_temp /= med_norm
+        norm_temp = np.sum(rand_temp, axis=2)/5
 
         ndeg = 20
         wave_fit = np.arange(len(wave), dtype='float64')/(len(wave)-1) - 0.5
-        coeffs = polyfit(wave_fit[pfit_ind] , temp_norm[pfit_ind,:], ndeg)
+        coeffs = polyfit(wave_fit[pfit_ind] , norm_temp[pfit_ind,:], ndeg)
         pfit = (polyval(wave_fit,coeffs)).T
 
-        flux = (temp_norm/pfit)[50:-50]
+        flux = (norm_temp/pfit)[50:-50]
         flux = (flux[self.mask_index,:]).T
 
         if self.add_dust_extinction:
@@ -459,7 +486,7 @@ class ML_data:
             flux_train -= 1
             flux_val -= 1
         else:
-            flux_train = flux
+            flux_train = flux - 1
             labels_train = labels
             flux_val = [None]
             labels_val = [None]
@@ -468,6 +495,7 @@ class ML_data:
         self.raw_labels = tuple(labels_train)
         self.raw_features_val = tuple(flux_val)
         self.raw_labels_val = tuple(labels_val)
+
 
 
 
@@ -486,7 +514,7 @@ class ML_data:
             if evol_model:
                 FILE = "fsps_evol_models_norm.fits"
             else:
-                FILE = 'fsps_constant_z_sfr_models_norm.fits'
+                FILE = 'fsps_constant_z_sfr_models_norm2.fits'
 
 
         FSPS_FILE = self.data_file_path + FILE
@@ -535,7 +563,7 @@ class ML_data:
             flux_train -= 1
             flux_val -= 1
         else:
-            flux_train = flux
+            flux_train = flux - 1
             labels_train = labels
             flux_val = [None]
             labels_val = [None]
