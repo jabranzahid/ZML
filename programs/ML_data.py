@@ -247,14 +247,14 @@ class ML_data:
 
     def __init__(
         self, n_chunks = 1, snr = 0, mask_lines = True,
-        training_data_fraction = 1, evol_model = True,
+        training_data_fraction = 1, evol_model = True, const_sfr = False,
         add_dust_extinction = False, generate_random = False,
         nrandom_templates = 20000, validation_split = 0.1, n_random_avg = 5,
     ):
 
         self.z_solar = 0.0142 # appropriate solar metallicity for these models
         self.data_file_path = DATA_FILE_PATH
-        self.training_data_fraction = 1 #this is defunct, clean up later
+        self.training_data_fraction = training_data_fraction
         self.n_chunks = n_chunks
         self.n_filters = 1 #this keyword is defunct, add neurons to first layer
         self.snr = snr
@@ -274,7 +274,7 @@ class ML_data:
             self.n_labels = 10
             self.generate_random_training_data()
         else:
-            self.read_training_data(evol_model = evol_model)
+            self.read_training_data(evol_model = evol_model, const_sfr = const_sfr)
 
 
 
@@ -499,7 +499,7 @@ class ML_data:
 
 
 
-    def read_training_data(self, zmax = 0.41, only_z_zero = False, evol_model = True, label_plus = True):
+    def read_training_data(self, zmax = 0.41, only_z_zero = False, evol_model = True, label_plus = True, const_sfr = False):
         #read in training data
         #these files were produced in IDL using wrapper_fsps_sfh_z_tabular_ascii.pro
         #and make_evol_fsps_model_str.pro. I fiddled with the programs,
@@ -513,9 +513,11 @@ class ML_data:
         else:
             if evol_model:
                 FILE = "fsps_evol_models_norm.fits"
+            elif const_sfr:
+                FILE= 'fsps_const_sfr_random.fits'
+                zmax = 100
             else:
                 FILE = 'fsps_constant_z_sfr_models_norm2.fits'
-
 
         FSPS_FILE = self.data_file_path + FILE
         hdul = fits.open(FSPS_FILE)
@@ -525,13 +527,19 @@ class ML_data:
             ind_z_zero = np.where(data['time_ind'] == 7)
             data = data[ind_z_zero]
 
-        flux = data.field(1)
+        flux = data['flux']
         wave = data['wave'][0,:]
 
         lwa = data['LWA1']
         mwa  = data['LOGMWA']
         lwz = data['LWZ1']/self.z_solar
         mwz  = data['LOGMWZ']/self.z_solar
+
+        #This was a test. When labels reshuflled, the MZ relation is still good
+        #for i in range(len(mwa)):
+        #    ind = np.argsort(np.random.uniform(0,5,5))
+        #    mwa[i,:] = mwa[i,ind]
+        #    mwz[i,:] = mwz[i,ind]
 
         if label_plus:
             labels_lin = np.column_stack((mwz,mwa))

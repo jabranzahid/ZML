@@ -8,6 +8,14 @@
 %run fit_model_plot_loop.py
 
 
+#I-Ting run these lines for starters
+n_chunks = 25
+data1 = ML_data(n_chunks = n_chunks, snr=0, evol_model = False, const_sfr = True, validation_split=0.02)
+data2 = ML_data(n_chunks = n_chunks, snr=20, evol_model = False, const_sfr = True, validation_split=0.02)
+data = [data1, data2]
+model = define_split_model_plus(data[0], l1 = 1e-6, l2 = 1e-6)
+model, pout = fit_model_plot_loop(model, data, n_loops = 20001, plot_ind_spec = True)
+
 
 pca, scaler = initialize_pca()
 data1 = ML_data(snr=0)
@@ -87,6 +95,14 @@ data = [data1, data2]
 model = define_split_model_plus(data[0], l1 = 1e-6, l2 = 1e-6)
 model, pout = fit_model_plot_loop(model, data, n_loops = 201, plot_ind_spec = False)
 
+
+#newest training data
+n_chunks = 25
+data1 = ML_data(n_chunks = n_chunks, snr=0, evol_model = False, const_sfr = True)
+data2 = ML_data(n_chunks = n_chunks, snr=20, evol_model = False, const_sfr = True)
+data = [data1, data2]
+model = define_split_model_plus(data[0], l1 = 1e-6, l2 = 1e-6)
+model, pout = fit_model_plot_loop(model, data, n_loops = 2001, plot_ind_spec = False)
 
 
 

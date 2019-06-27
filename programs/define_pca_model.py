@@ -23,13 +23,13 @@ def define_pca_model(ncomp, l1 = 0, l2 = 0):
     model = Sequential()
 
     #Batch normaliztion produces terrible results. Do not use!
-    model.add(Dense(128, activation=ACTIVATION, input_dim=ncomp,
+    model.add(Dense(20, activation=ACTIVATION, input_dim=ncomp,
                     kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                     bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2)))
-    model.add(Dense(64, activation=ACTIVATION,
-                    kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
-                    bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2)))
-    model.add(Dense(32, activation=ACTIVATION,
+#    model.add(Dense(32, activation=ACTIVATION,
+#                    kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+#                    bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2)))
+    model.add(Dense(15, activation=ACTIVATION,
                     kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                     bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2)))
     model.add(Dense(10, activation="linear"))

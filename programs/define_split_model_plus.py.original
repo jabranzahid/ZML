@@ -28,7 +28,7 @@ def define_split_model_plus(split, l1 = 0, l2 = 0):
             shape = (split.data_shape())[j]
             input = Input(shape=shape, name='input_' + name)
             inputs.append(input)
-            output = Dense(32, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
+            output = Dense(8, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                            bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                            activation = activation, name='dense_' + name)(input)
             outputs.append(output)
@@ -36,9 +36,6 @@ def define_split_model_plus(split, l1 = 0, l2 = 0):
     first_layer = Model(inputs=inputs, outputs=outputs)
     combined = concatenate(first_layer.outputs)
     #dropout1 = Dropout(0.0)(combined)
-    final_layers = Dense(512, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
-                         bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
-                         activation = activation, name="Final_hidden_layer0")(combined)
     final_layers = Dense(256, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                          bias_regularizer=regularizers.l1_l2(l1=l1, l2=l2),
                          activation = activation, name="Final_hidden_layer1")(combined)
