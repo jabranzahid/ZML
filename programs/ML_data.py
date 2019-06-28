@@ -9,7 +9,7 @@ from sklearn.decomposition import KernelPCA as kPCA
 from sklearn.preprocessing import StandardScaler as SCALER
 
 
-DATA_FILE_PATH = '/Users/jabran/ml/metallicity/data/'
+DATA_FILE_PATH = '../data/'
 
 def initialize_pca():
 
@@ -221,7 +221,7 @@ def split_data_into_chunks(input_arr, n_chunks, n_filters):
 
 def get_instance_training_data(ML_obj):
 
-    labels = ML_obj.raw_labels
+    labels = np.asarray(ML_obj.raw_labels)
     #if SNR set, then add gaussian noise with a set SNR
     if ML_obj.snr != 0:
         flux_mask = add_noise_to_training_data(ML_obj.raw_features, ML_obj.snr)
@@ -230,15 +230,10 @@ def get_instance_training_data(ML_obj):
 
     features = np.expand_dims(flux_mask, axis=2)
 
-    if ML_obj.training_data_fraction != 1:
-        ind_max = round(ML_obj.n_spec*ML_obj.training_data_fraction)
-        features = features[0:ind_max-1,:,:]
-        labels = labels[0:ind_max-1,:]
-
     if ML_obj.n_chunks > 0 or ML_obj.n_filters > 1:
         features = split_data_into_chunks(features, ML_obj.n_chunks, ML_obj.n_filters)
 
-    return features, np.asarray(labels)
+    return features, labels
 
 
 
@@ -565,6 +560,11 @@ class ML_data:
         np.random.shuffle(flux)
         np.random.seed(4)
         np.random.shuffle(labels)
+
+        if self.training_data_fraction != 1:
+            ind_max = round(self.n_spec*self.training_data_fraction)
+            flux = flux[0:ind_max-1,:]
+            labels = labels[0:ind_max-1,:]
 
         if self.validation_split != 0:
             flux_train, labels_train, flux_val, labels_val = self.split_training_validation(flux, labels)
