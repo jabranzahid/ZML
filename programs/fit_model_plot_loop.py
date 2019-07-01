@@ -22,7 +22,7 @@ def mypause(interval):
         time.sleep(interval)
 
 
-def fit_model_plot_loop(model, data, n_loops = 50,
+def fit_model_plot_loop(model, data, n_loops = 50, plot_fit = True,
                         BATCH_SIZE = 128, plot_ind_spec = True,
                         training_data_fraction = 1, pca = None , scaler = None,
     ):
@@ -47,17 +47,15 @@ def fit_model_plot_loop(model, data, n_loops = 50,
         test_data = transform_data_pca(test_data[0], pca, scaler)
         test_data2 = transform_data_pca(test_data2[0], pca, scaler)
 
+    if plot_fit:
+        plot.ion()
+        # set up the figure
+        fig = plot.figure()
+        plot.show(block=False)
 
-    plot.ion()
-    # set up the figure
-    fig = plot.figure()
-    plot.show(block=False)
+        pout = []
+        mout = []
 
-    pout = []
-    mout = []
-
-    frac = [0.010190666, 0.052520990, 0.12342441, 0.29004723, 0.52381670]
-    frac_arr = (np.tile(frac, 25)).reshape(25, 5)
     #This shows a movie of the convergence plotting the test set
     for i in range(n_loops):
 
@@ -69,40 +67,38 @@ def fit_model_plot_loop(model, data, n_loops = 50,
         ppp = model.predict(test_data)
         pout.append(ppp)
         ppp2 = model.predict(test_data2)
-        plot.clf()
-        #plot.ion()
-        #plot.plot(mass, np.sum(ppp[:,0:5]*frac_arr, axis=1), label='ML MW SDSS')
-        #plot.plot(mass, (ppp[:,4]), label='ML SDSS OLD')
-        plot.plot(mass, (ppp[:,0]), label='ML SDSS')
-        #plot.plot(mass2, (ppp2[:,0]), label='ML SHELS')
-        plot.plot(mz['mass'], mz['Z'], label='SSB SDSS')
-        plot.ylim(-0.8, 0.3)
-        plot.ylabel('[Z/Z_solar]')
-        plot.xlabel('Stellar Mass')
-        plot.legend()
-        plot.draw()
+        if plot_fit:
+            plot.clf()
+            plot.plot(mass, (ppp[:,0]), label='ML SDSS')
+            #plot.plot(mass2, (ppp2[:,0]), label='ML SHELS')
+            plot.plot(mz['mass'], mz['Z'], label='SSB SDSS')
+            plot.ylim(-0.8, 0.3)
+            plot.ylabel('[Z/Z_solar]')
+            plot.xlabel('Stellar Mass')
+            plot.legend()
+            plot.draw()
 
-        if plot_ind_spec:
-            if i%25 == 0:
-                ppp = model.predict(spec)
-                ppp = ppp[sind,:]
-                zzz = ppp[:,0]
-                mmm = sdss['mass']
-                mmm = mmm[sind]
-                #good = np.where(zzz > -2 )
-                #zzz = zzz[good]
-                #mmm = mmm[good]
-                zsplit = np.array_split(zzz, 100)
-                msplit = np.array_split(mmm, 100)
-                zmed = []
-                mmed =[]
-                for j in np.arange(100):
-                    zmed.append(np.nanmedian(zsplit[j]))
-                    mmed.append(np.nanmedian(msplit[j]))
+            if plot_ind_spec:
+                if i%25 == 0:
+                    ppp = model.predict(spec)
+                    ppp = ppp[sind,:]
+                    zzz = ppp[:,0]
+                    mmm = sdss['mass']
+                    mmm = mmm[sind]
+                    #good = np.where(zzz > -2 )
+                    #zzz = zzz[good]
+                    #mmm = mmm[good]
+                    zsplit = np.array_split(zzz, 100)
+                    msplit = np.array_split(mmm, 100)
+                    zmed = []
+                    mmed =[]
+                    for j in np.arange(100):
+                        zmed.append(np.nanmedian(zsplit[j]))
+                        mmed.append(np.nanmedian(msplit[j]))
 
-            plot.plot(mmed,zmed)
+                plot.plot(mmed,zmed)
 
-        mypause(0.00001)
-        print(i)
+            mypause(0.00001)
+            print(i)
 
     return model, pout#, mout

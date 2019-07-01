@@ -8,13 +8,75 @@
 %run fit_model_plot_loop.py
 
 
+#for keras model with 8, 256, 128, 10 layers
+#this model saved on desktop as keras_model2.h5
+n_chunks = 25
+data1 = ML_data(snr=0, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 1)
+data2 = ML_data(snr=5, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data3 = ML_data(snr=10, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data4 = ML_data(snr=20, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data5 = ML_data(snr=50, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data = [data1, data2, data3, data4, data5]
+model = define_split_model_plus(data[0], l1 = 1e-5, l2 = 1e-5)
+data_temp = ML_data(snr=0, n_chunks = n_chunks, evol_model = False, validation_split=0.02)
+model, pout = fit_model_plot_loop(model, [data_temp], n_loops = 100, plot_ind_spec = False)
+model, pout = fit_model_plot_loop(model, data, n_loops = 2501, plot_ind_spec = True)
+#finish with SGD rather than ADAM
+model.compile(loss='mean_squared_error', optimizer='sgd')
+model, pout = fit_model_plot_loop(model, data, n_loops = 500, plot_ind_spec = True)
+
+
+#for keras model with 32, 256, 128, 64, 10 layers
+n_chunks = 25
+data1 = ML_data(snr=0, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 1)
+data2 = ML_data(snr=5, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data3 = ML_data(snr=10, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data4 = ML_data(snr=20, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data5 = ML_data(snr=50, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.25)
+data = [data1, data2, data3, data4, data5]
+data_temp = ML_data(snr=0, n_chunks = n_chunks, evol_model = True, validation_split=0.02)
+model = define_split_model_plus(data_temp, l1 = 1e-7, l2 = 1e-7)
+model, pout = fit_model_plot_loop(model, [data_temp], n_loops = 35, plot_ind_spec = False)
+model, pout = fit_model_plot_loop(model, data, n_loops = 20001, plot_ind_spec = True)
+
+
+
 #I-Ting run these lines for starters
 n_chunks = 25
 data1 = ML_data(n_chunks = n_chunks, snr=0, evol_model = False, const_sfr = True, validation_split=0.02)
-data2 = ML_data(n_chunks = n_chunks, snr=20, evol_model = False, const_sfr = True, validation_split=0.02)
+data2 = ML_data(n_chunks = n_chunks, snr=10, evol_model = False, const_sfr = True, validation_split=0.02)
 data = [data1, data2]
-model = define_split_model_plus(data[0], l1 = 1e-6, l2 = 1e-6)
+model = define_split_model_plus(data[0], l1 = 1e-5, l2 = 1e-5)
 model, pout = fit_model_plot_loop(model, data, n_loops = 20001, plot_ind_spec = True)
+
+
+
+
+
+
+n_chunks = 25
+data1 = ML_data(snr=0, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.02)
+data2 = ML_data(snr=5, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.005)
+data3 = ML_data(snr=10, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.005)
+data4 = ML_data(snr=20, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.005)
+data5 = ML_data(snr=50, n_chunks = n_chunks, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.005)
+data = [data1, data2, data3, data4, data5]
+model = define_split_model_plus(data[0], l1 = 1e-5, l2 = 1e-5)
+model, pout = fit_model_plot_loop(model, data, n_loops = 20001, plot_ind_spec = False)
+
+
+
+
+pca, scaler = initialize_pca()
+data1 = ML_data(snr=0, evol_model = False, const_sfr = True, validation_split=0.02, training_data_fraction = 0.2)
+data2 = ML_data(snr=5, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.05)
+data3 = ML_data(snr=10, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.05)
+data4 = ML_data(snr=20, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.05)
+data5 = ML_data(snr=50, evol_model = False, const_sfr = True, validation_split=0.005, training_data_fraction = 0.05)
+data = [data1, data2, data3, data4, data5]
+model = define_pca_model(pca.n_components_, l1 = 1e-3, l2 = 1e-3)
+model, pout = fit_model_plot_loop(model, data, n_loops = 1001, pca = pca, scaler = scaler)
+
 
 
 pca, scaler = initialize_pca()
